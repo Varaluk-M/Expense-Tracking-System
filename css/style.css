@@ -810,6 +810,57 @@ body {
   text-decoration: underline;
 }
 
+/* LINE */
+.btn--line {
+  background: #06c755;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+}
+
+.btn--line:hover {
+  background: #05b34c;
+  filter: none;
+}
+
+.report-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  background: var(--bg);
+  padding: 0.3rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.report-tab {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.report-tab--active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.report-tab--active#tabReportLine {
+  background: rgba(6, 199, 85, 0.2);
+  color: #5ee9a0;
+}
+
+.form__help--line {
+  color: #5ee9a0;
+  margin-bottom: 0.75rem;
+}
+
 /* Header user */
 .header__actions {
   display: flex;

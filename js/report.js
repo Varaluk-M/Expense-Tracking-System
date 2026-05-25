@@ -1,5 +1,5 @@
 /**
- * สร้างรายงานและส่งเข้าอีเมลโดยตรง (Web3Forms)
+ * สร้างรายงาน — ส่งเข้า LINE (หลัก) หรืออีเมล (ทางเลือก)
  */
 const ReportService = (() => {
   const PERIOD_LABEL = { day: "รายวัน", month: "รายเดือน", year: "รายปี" };
@@ -55,38 +55,38 @@ const ReportService = (() => {
       ctx;
 
     const lines = [
-      "══════════════════════════════════",
-      "  รายงานรายรับ-รายจ่าย",
-      "══════════════════════════════════",
+      "📊 รายงานรายรับ-รายจ่าย",
       "",
-      `ผู้ส่งรายงาน: ${user.displayName}`,
-      `อีเมลบัญชี: ${user.email}`,
-      `ช่วงเวลา: ${PERIOD_LABEL[period]} — ${periodLabel}`,
-      `วันที่ออกรายงาน: ${new Date().toLocaleString("th-TH")}`,
+      `👤 ${user.displayName}`,
+      `📅 ${PERIOD_LABEL[period]} — ${periodLabel}`,
+      `🕐 ${new Date().toLocaleString("th-TH")}`,
       "",
-      "── สรุปยอด ──",
-      `ยอดคงเหลือ (รวมทั้งหมด): ${formatMoneyPlain(allBalance)}`,
-      `รายรับในช่วง: ${formatMoneyPlain(totals.income)}`,
-      `รายจ่ายในช่วง: ${formatMoneyPlain(totals.expense)}`,
-      `ผลต่างในช่วง: ${formatMoneyPlain(totals.income - totals.expense)}`,
+      "── สรุป ──",
+      `💰 คงเหลือ: ${formatMoneyPlain(allBalance)}`,
+      `📈 รายรับ: ${formatMoneyPlain(totals.income)}`,
+      `📉 รายจ่าย: ${formatMoneyPlain(totals.expense)}`,
+      `📌 ผลต่าง: ${formatMoneyPlain(totals.income - totals.expense)}`,
     ];
 
     if (settings.monthlyBudget) {
-      lines.push(`งบรายเดือนที่ตั้งไว้: ${formatMoneyPlain(settings.monthlyBudget)}`);
+      lines.push(`🎯 งบเดือน: ${formatMoneyPlain(settings.monthlyBudget)}`);
     }
 
     lines.push("", "── รายการ ──");
 
     if (transactions.length === 0) {
-      lines.push("(ไม่มีรายการในช่วงนี้)");
+      lines.push("(ไม่มีรายการ)");
     } else {
-      transactions.forEach((t, i) => {
+      transactions.slice(0, 40).forEach((t, i) => {
+        const icon = t.type === "income" ? "🟢" : "🔴";
         const sign = t.type === "income" ? "+" : "-";
-        const typeLabel = t.type === "income" ? "รับ" : "จ่าย";
         lines.push(
-          `${i + 1}. [${typeLabel}] ${formatDateTh(t.date)} | ${t.category} | ${sign}${formatMoneyPlain(t.amount)}${t.note ? " | " + t.note : ""}`
+          `${i + 1}. ${icon} ${formatDateTh(t.date)} ${t.category} ${sign}${formatMoneyPlain(t.amount)}${t.note ? ` (${t.note})` : ""}`
         );
       });
+      if (transactions.length > 40) {
+        lines.push(`... และอีก ${transactions.length - 40} รายการ (ดูในแอป)`);
+      }
     }
 
     const expenseByCat = {};
@@ -100,10 +100,10 @@ const ReportService = (() => {
       lines.push("", "── รายจ่ายตามหมวด ──");
       Object.entries(expenseByCat)
         .sort((a, b) => b[1] - a[1])
-        .forEach(([cat, amt]) => lines.push(`  • ${cat}: ${formatMoneyPlain(amt)}`));
+        .forEach(([cat, amt]) => lines.push(`• ${cat}: ${formatMoneyPlain(amt)}`));
     }
 
-    lines.push("", "══════════════════════════════════", "ส่งจากแอปบันทึกรายรับ-รายจ่าย");
+    lines.push("", "— ส่งจากแอปบันทึกรายรับ-รายจ่าย");
     return lines.join("\n");
   }
 
@@ -113,6 +113,35 @@ const ReportService = (() => {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/\n/g, "<br>");
+  }
+
+  async function copyText(text) {
+    await navigator.clipboard.writeText(text);
+  }
+
+  function openLineShare(text) {
+    const url =
+      "https://line.me/R/msg/text/?" + encodeURIComponent(text);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function shareToLine(text, title) {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text });
+        return { method: "share" };
+      } catch (e) {
+        if (e.name === "AbortError") return { method: "cancel" };
+      }
+    }
+    try {
+      await copyText(text);
+      openLineShare(text);
+      return { method: "line-link" };
+    } catch {
+      openLineShare(text);
+      return { method: "line-link-only" };
+    }
   }
 
   async function sendToInbox(accessKey, subject, body, fromEmail, fromName) {
@@ -138,6 +167,8 @@ const ReportService = (() => {
   return {
     buildReport,
     buildHtmlPreview,
+    shareToLine,
+    copyText,
     sendToInbox,
     getAccessKey,
     isEmailReady,
@@ -149,18 +180,29 @@ const ReportService = (() => {
 const ReportUI = (() => {
   const $ = (id) => document.getElementById(id);
   let lastReportText = "";
+  let lastReportTitle = "";
   let getSettings = () => ({});
+
+  function setReportTab(tab) {
+    $("tabReportLine").classList.toggle("report-tab--active", tab === "line");
+    $("tabReportEmail").classList.toggle("report-tab--active", tab === "email");
+    $("reportLinePanel").classList.toggle("hidden", tab !== "line");
+    $("reportEmailPanel").classList.toggle("hidden", tab !== "email");
+  }
 
   function open(ctx) {
     lastReportText = ReportService.buildReport(ctx);
+    lastReportTitle = `รายงานรายรับ-รายจ่าย — ${ctx.periodLabel}`;
     $("reportPreview").innerHTML = ReportService.buildHtmlPreview(lastReportText);
-    $("reportSubject").value = `รายงานรายรับ-รายจ่าย — ${ctx.periodLabel}`;
+    $("reportPreviewEmail").innerHTML = ReportService.buildHtmlPreview(lastReportText);
+    $("reportSubject").value = lastReportTitle;
 
-    const ready = ReportService.isEmailReady(getSettings());
-    $("reportSetupHint").classList.toggle("hidden", ready);
-    $("reportReadyBlock").classList.toggle("hidden", !ready);
-    $("btnSendReport").disabled = !ready;
+    const emailReady = ReportService.isEmailReady(getSettings());
+    $("emailSetupHint").classList.toggle("hidden", emailReady);
+    $("emailSendBlock").classList.toggle("hidden", !emailReady);
 
+    setReportTab("line");
+    $("reportSendStatus").classList.add("hidden");
     $("reportDialog").showModal();
   }
 
@@ -170,15 +212,11 @@ const ReportUI = (() => {
     $("btnReport").addEventListener("click", () => {
       const ctx = getReportContext();
       if (!ctx) return;
-      if (!ReportService.isEmailReady(getSettings())) {
-        const go = confirm(
-          "ยังไม่ได้ตั้งค่าส่งอีเมล\n\nไปที่ ⚙️ ตั้งค่า → ใส่ Web3Forms Access Key (ฟรี)\n\nต้องการเปิดตั้งค่าตอนนี้ไหม?"
-        );
-        if (go) $("settingsDialog").showModal();
-        return;
-      }
       open(ctx);
     });
+
+    $("tabReportLine").addEventListener("click", () => setReportTab("line"));
+    $("tabReportEmail").addEventListener("click", () => setReportTab("email"));
 
     $("btnOpenSettingsFromReport").addEventListener("click", () => {
       $("reportDialog").close();
@@ -187,10 +225,36 @@ const ReportUI = (() => {
 
     $("btnCloseReport").addEventListener("click", () => $("reportDialog").close());
 
+    $("btnShareLine").addEventListener("click", async () => {
+      const status = $("reportSendStatus");
+      const btn = $("btnShareLine");
+      btn.disabled = true;
+      status.classList.remove("hidden", "report-status--ok", "report-status--err");
+
+      try {
+        const result = await ReportService.shareToLine(lastReportText, lastReportTitle);
+        if (result.method === "cancel") {
+          status.classList.add("hidden");
+        } else if (result.method === "share") {
+          status.textContent = "✓ แชร์แล้ว — เลือกแชท LINE หรือกลุ่มครอบครัว";
+          status.classList.add("report-status--ok");
+        } else {
+          status.textContent =
+            "✓ เปิด LINE แล้ว — เลือกแชทแล้วกดส่ง (ข้อความคัดลอกไว้แล้ว)";
+          status.classList.add("report-status--ok");
+        }
+      } catch (e) {
+        status.textContent = "✗ แชร์ไม่สำเร็จ — ลองกดคัดลอกแล้ววางใน LINE เอง";
+        status.classList.add("report-status--err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     $("btnCopyReport").addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(lastReportText);
-        alert("คัดลอกรายงานแล้ว");
+        await ReportService.copyText(lastReportText);
+        alert("คัดลอกแล้ว — เปิด LINE แล้ววางในช่องแชท");
       } catch {
         alert("คัดลอกไม่ได้ — ลองเลือกข้อความในหน้าต่างแล้วคัดลอกเอง");
       }
@@ -209,7 +273,7 @@ const ReportUI = (() => {
       const btn = $("btnSendReport");
       const status = $("reportSendStatus");
       btn.disabled = true;
-      status.textContent = "กำลังส่ง...";
+      status.textContent = "กำลังส่งอีเมล...";
       status.classList.remove("hidden", "report-status--ok", "report-status--err");
 
       try {
@@ -220,11 +284,11 @@ const ReportUI = (() => {
           ctx.user.email,
           ctx.user.displayName
         );
-        status.textContent = "✓ ส่งเข้าอีเมลแล้ว — ตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์สแปม)";
+        status.textContent = "✓ ส่งเข้าอีเมลแล้ว — ตรวจสอบกล่องจดหมาย";
         status.classList.add("report-status--ok");
       } catch (e) {
         console.error(e);
-        status.textContent = "✗ " + (e.message || "ส่งไม่สำเร็จ — ตรวจสอบ Access Key");
+        status.textContent = "✗ " + (e.message || "ส่งอีเมลไม่สำเร็จ");
         status.classList.add("report-status--err");
       } finally {
         btn.disabled = false;

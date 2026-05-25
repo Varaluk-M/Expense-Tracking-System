@@ -86,7 +86,7 @@
       </div>
       <div class="header__actions">
         <span class="user-badge" id="userDisplay">ผู้ใช้</span>
-        <button type="button" class="btn btn--accent btn--sm" id="btnReport" title="ส่งรายงานทางอีเมล">📧 รายงาน</button>
+        <button type="button" class="btn btn--line btn--sm" id="btnReport" title="ส่งรายงานเข้า LINE">💬 รายงาน</button>
         <button type="button" class="btn btn--ghost btn--sm" id="btnSettings" title="ตั้งค่า">⚙️</button>
         <button type="button" class="btn btn--ghost btn--sm" id="btnLogout" title="ออกจากระบบ">ออก</button>
       </div>
@@ -184,7 +184,7 @@
     </main>
 
     <footer class="footer">
-      <p>ข้อมูลของบัญชีนี้เท่านั้น · กด <strong>รายงาน</strong> เพื่อส่งสรุปทางอีเมล</p>
+      <p>ข้อมูลของบัญชีนี้เท่านั้น · กด <strong>รายงาน</strong> เพื่อแชร์สรุปเข้า LINE</p>
     </footer>
   </div>
 
@@ -229,28 +229,36 @@
 
   <dialog id="reportDialog" class="dialog dialog--wide">
     <div class="dialog__inner">
-      <h2>📧 ส่งรายงานเข้าอีเมล</h2>
-      <p class="dialog__lead">สรุปตามช่วงที่เลือก (รายวัน / เดือน / ปี) — ส่งตรงเข้ากล่องจดหมายของคุณ</p>
+      <h2>💬 ส่งรายงาน</h2>
+      <p class="dialog__lead">สรุปตามช่วงที่เลือก (รายวัน / เดือน / ปี)</p>
 
-      <div id="reportSetupHint" class="report-setup hidden">
-        <p>ยังไม่ได้ตั้งค่าส่งอีเมล — ไปที่ <strong>⚙️ ตั้งค่า</strong> แล้ววาง <strong>Web3Forms Access Key</strong> (ฟรี ใช้เวลา 2 นาที)</p>
-        <button type="button" class="btn btn--primary btn--block" id="btnOpenSettingsFromReport">ไปตั้งค่า</button>
+      <div class="report-tabs">
+        <button type="button" class="report-tab report-tab--active" id="tabReportLine">LINE (แนะนำ)</button>
+        <button type="button" class="report-tab" id="tabReportEmail">อีเมล</button>
       </div>
 
-      <div id="reportReadyBlock">
-        <div class="form__group">
-          <label for="reportSubject">หัวข้ออีเมล</label>
-          <input type="text" id="reportSubject" class="input input--full" />
-        </div>
-        <p class="form__help">รายงานจะส่งไปที่อีเมลที่คุณลงทะเบียนตอนสร้าง Access Key ที่ web3forms.com</p>
-
+      <div id="reportLinePanel">
+        <p class="form__help form__help--line">ฟรี · ไม่ต้องตั้งค่า — เลือกแชทครอบครัวหรือกลุ่ม LINE แล้วกดส่ง</p>
         <div class="report-preview" id="reportPreview" aria-label="ตัวอย่างรายงาน"></div>
-
         <p id="reportSendStatus" class="report-status hidden" role="status"></p>
-
         <div class="report-actions">
           <button type="button" class="btn btn--ghost" id="btnCopyReport">คัดลอก</button>
-          <button type="button" class="btn btn--primary btn--lg" id="btnSendReport">ส่งเข้าอีเมลของฉัน</button>
+          <button type="button" class="btn btn--line btn--lg" id="btnShareLine">แชร์เข้า LINE</button>
+        </div>
+      </div>
+
+      <div id="reportEmailPanel" class="hidden">
+        <div id="emailSetupHint" class="report-setup">
+          <p>ต้องการส่งอีเมลด้วย → ไป <strong>⚙️ ตั้งค่า</strong> วาง Web3Forms Access Key (<a href="https://web3forms.com/" target="_blank" rel="noopener">ฟรี</a>)</p>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnOpenSettingsFromReport">ไปตั้งค่า</button>
+        </div>
+        <div id="emailSendBlock" class="hidden">
+          <div class="form__group">
+            <label for="reportSubject">หัวข้ออีเมล</label>
+            <input type="text" id="reportSubject" class="input input--full" />
+          </div>
+          <div class="report-preview" id="reportPreviewEmail"></div>
+          <button type="button" class="btn btn--primary btn--block" id="btnSendReport">ส่งเข้าอีเมล</button>
         </div>
       </div>
 
