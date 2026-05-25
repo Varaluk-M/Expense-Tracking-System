@@ -541,3 +541,123 @@ body {
   color: var(--warning);
   border: 1px solid rgba(251, 191, 36, 0.35);
 }
+
+/* Auth screen */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.35rem;
+  box-shadow: var(--shadow);
+}
+
+.auth-card__head {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.auth-card__head h1 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.auth-card__head p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  background: var(--bg);
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+
+.auth-tab {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.auth-tab--active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.auth-form .form__group:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.input--full {
+  max-width: none;
+  width: 100%;
+}
+
+.auth-error {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: var(--expense);
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.auth-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  text-align: center;
+}
+
+.auth-note code {
+  font-size: 0.7rem;
+  background: var(--surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+/* Header user */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.user-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .user-badge {
+    display: inline;
+  }
+}

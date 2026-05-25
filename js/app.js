@@ -1,8 +1,6 @@
 /**
- * Expense Tracking System — static app, data in localStorage
+ * Expense Tracking System — แยกข้อมูลตามบัญชีผู้ใช้
  */
-const STORAGE_KEY = "family-expense-tracker-v1";
-
 const CATEGORIES = {
   income: ["เงินเดือน", "รายได้เสริม", "โบนัส", "ดอกเบี้ย", "อื่นๆ (รายรับ)"],
   expense: [
@@ -23,6 +21,7 @@ const state = {
   period: "month",
   settings: { initialBalance: 0, monthlyBudget: null },
   transactions: [],
+  saving: false,
 };
 
 let categoryChart = null;
@@ -45,26 +44,26 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (data.settings) state.settings = { ...state.settings, ...data.settings };
-    if (Array.isArray(data.transactions)) state.transactions = data.transactions;
-  } catch (e) {
-    console.warn("โหลดข้อมูลไม่สำเร็จ", e);
-  }
+async function loadUserData() {
+  const user = AuthService.getCurrentUser();
+  if (!user) return;
+  const data = await DataService.load(user);
+  state.settings = data.settings;
+  state.transactions = data.transactions;
 }
 
-function save() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
+async function persist() {
+  const user = AuthService.getCurrentUser();
+  if (!user || state.saving) return;
+  state.saving = true;
+  try {
+    await DataService.save(user, {
       settings: state.settings,
       transactions: state.transactions,
-    })
-  );
+    });
+  } finally {
+    state.saving = false;
+  }
 }
 
 function populateCategories() {
@@ -221,11 +220,11 @@ function renderList() {
   });
 
   ul.querySelectorAll(".tx-item__delete").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
       if (confirm("ลบรายการนี้?")) {
         state.transactions = state.transactions.filter((x) => String(x.id) !== id);
-        save();
+        await persist();
         refresh();
       }
     });
@@ -299,7 +298,10 @@ function renderCharts() {
     options: {
       responsive: true,
       plugins: {
-        legend: { position: "bottom", labels: { color: "#8fa3bc", font: { family: "IBM Plex Sans Thai" } } },
+        legend: {
+          position: "bottom",
+          labels: { color: "#8fa3bc", font: { family: "IBM Plex Sans Thai" } },
+        },
       },
     },
   });
@@ -343,7 +345,7 @@ function refresh() {
   renderCharts();
 }
 
-function addTransaction(e) {
+async function addTransaction(e) {
   e.preventDefault();
   const type = $("txType").value;
   const amount = parseFloat($("txAmount").value);
@@ -364,7 +366,7 @@ function addTransaction(e) {
     category,
     note,
   });
-  save();
+  await persist();
   $("transactionForm").reset();
   $("txDate").value = todayISO();
   populateCategories();
@@ -408,12 +410,12 @@ function setupSettings() {
 
   $("btnCloseSettings").addEventListener("click", () => dialog.close());
 
-  $("settingsForm").addEventListener("submit", (e) => {
+  $("settingsForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     state.settings.initialBalance = parseFloat($("initialBalance").value) || 0;
     const b = $("monthlyBudget").value;
     state.settings.monthlyBudget = b === "" ? null : parseFloat(b) || null;
-    save();
+    await persist();
     dialog.close();
     refresh();
   });
@@ -430,17 +432,17 @@ function setupSettings() {
     URL.revokeObjectURL(a.href);
   });
 
-  $("importFile").addEventListener("change", (ev) => {
+  $("importFile").addEventListener("change", async (ev) => {
     const file = ev.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result);
-        if (!confirm("นำเข้าข้อมูลจะแทนที่ข้อมูลเดิมในเครื่องนี้ ต้องการดำเนินการ?")) return;
+        if (!confirm("นำเข้าข้อมูลจะแทนที่ข้อมูลของบัญชีนี้ ต้องการดำเนินการ?")) return;
         if (data.settings) state.settings = { ...state.settings, ...data.settings };
         if (Array.isArray(data.transactions)) state.transactions = data.transactions;
-        save();
+        await persist();
         refresh();
         alert("นำเข้าข้อมูลสำเร็จ");
       } catch {
@@ -453,7 +455,7 @@ function setupSettings() {
 }
 
 function setupClearFiltered() {
-  $("btnClearFiltered").addEventListener("click", () => {
+  $("btnClearFiltered").addEventListener("click", async () => {
     const filtered = getFilteredTransactions();
     if (filtered.length === 0) {
       alert("ไม่มีรายการในช่วงนี้");
@@ -462,20 +464,37 @@ function setupClearFiltered() {
     if (!confirm(`ลบรายการ ${filtered.length} รายการในช่วงที่เลือก?`)) return;
     const ids = new Set(filtered.map((t) => t.id));
     state.transactions = state.transactions.filter((t) => !ids.has(t.id));
-    save();
+    await persist();
     refresh();
   });
 }
 
-function init() {
-  load();
+function setupAppHandlers() {
   setupPeriodChips();
   setupFilters();
   setupForm();
   setupSettings();
   setupClearFiltered();
+}
+
+async function onUserReady(user) {
+  if (!user) {
+    AuthUI.showAuth();
+    state.settings = DataService.defaultData().settings;
+    state.transactions = [];
+    return;
+  }
+  AuthUI.showApp(user);
+  await loadUserData();
   updateFilterInputs();
   refresh();
 }
 
-init();
+function bootstrap() {
+  AuthUI.setup();
+  setupAppHandlers();
+  AuthService.init();
+  AuthService.onAuthChange(onUserReady);
+}
+
+bootstrap();
