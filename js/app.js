@@ -19,7 +19,7 @@ const CATEGORIES = {
 
 const state = {
   period: "month",
-  settings: { initialBalance: 0, monthlyBudget: null },
+  settings: { initialBalance: 0, monthlyBudget: null, web3formsAccessKey: "" },
   transactions: [],
   saving: false,
 };
@@ -405,6 +405,7 @@ function setupSettings() {
     $("initialBalance").value = state.settings.initialBalance ?? 0;
     $("monthlyBudget").value =
       state.settings.monthlyBudget != null ? state.settings.monthlyBudget : "";
+    $("web3formsAccessKey").value = state.settings.web3formsAccessKey || "";
     dialog.showModal();
   });
 
@@ -415,6 +416,7 @@ function setupSettings() {
     state.settings.initialBalance = parseFloat($("initialBalance").value) || 0;
     const b = $("monthlyBudget").value;
     state.settings.monthlyBudget = b === "" ? null : parseFloat(b) || null;
+    state.settings.web3formsAccessKey = $("web3formsAccessKey").value.trim();
     await persist();
     dialog.close();
     refresh();
@@ -502,7 +504,7 @@ function setupAppHandlers() {
   setupForm();
   setupSettings();
   setupClearFiltered();
-  ReportUI.setup(getReportContext);
+  ReportUI.setup(getReportContext, () => state.settings);
 }
 
 async function onUserReady(user) {

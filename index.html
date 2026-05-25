@@ -14,7 +14,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
   <!-- หน้า Login -->
@@ -201,6 +200,16 @@
         <label for="monthlyBudget">งบประมาณรายเดือน (ไม่บังคับ)</label>
         <input type="number" id="monthlyBudget" class="input input--full" min="0" step="0.01" placeholder="เว้นว่างถ้าไม่ใช้" />
       </div>
+      <fieldset class="fieldset fieldset--email">
+        <legend>📧 ส่งรายงานเข้าอีเมล (ครั้งเดียว)</legend>
+        <div class="form__group">
+          <label for="web3formsAccessKey">Web3Forms Access Key</label>
+          <input type="password" id="web3formsAccessKey" class="input input--full" autocomplete="off" placeholder="วาง Access Key ที่ได้จาก web3forms.com" />
+          <p class="form__help">
+            สมัครฟรีที่ <a href="https://web3forms.com/" target="_blank" rel="noopener">web3forms.com</a> → ใส่อีเมลที่ต้องการรับรายงาน → คัดลอก Access Key มาวางที่นี่ → บันทึก
+          </p>
+        </div>
+      </fieldset>
       <fieldset class="fieldset">
         <legend>สำรอง / กู้คืนข้อมูล</legend>
         <div class="dialog__actions">
@@ -220,28 +229,29 @@
 
   <dialog id="reportDialog" class="dialog dialog--wide">
     <div class="dialog__inner">
-      <h2>📧 ส่งรายงานทางอีเมล</h2>
-      <p class="dialog__lead">สรุปตามช่วงที่เลือกอยู่ (รายวัน / เดือน / ปี) — แก้อีเมลผู้รับได้</p>
+      <h2>📧 ส่งรายงานเข้าอีเมล</h2>
+      <p class="dialog__lead">สรุปตามช่วงที่เลือก (รายวัน / เดือน / ปี) — ส่งตรงเข้ากล่องจดหมายของคุณ</p>
 
-      <div class="form__group">
-        <label for="reportToEmail">ส่งถึงอีเมล</label>
-        <input type="email" id="reportToEmail" class="input input--full" placeholder="recipient@email.com" />
-      </div>
-      <div class="form__group">
-        <label for="reportSubject">หัวข้อ</label>
-        <input type="text" id="reportSubject" class="input input--full" />
+      <div id="reportSetupHint" class="report-setup hidden">
+        <p>ยังไม่ได้ตั้งค่าส่งอีเมล — ไปที่ <strong>⚙️ ตั้งค่า</strong> แล้ววาง <strong>Web3Forms Access Key</strong> (ฟรี ใช้เวลา 2 นาที)</p>
+        <button type="button" class="btn btn--primary btn--block" id="btnOpenSettingsFromReport">ไปตั้งค่า</button>
       </div>
 
-      <div class="report-preview" id="reportPreview" aria-label="ตัวอย่างรายงาน"></div>
+      <div id="reportReadyBlock">
+        <div class="form__group">
+          <label for="reportSubject">หัวข้ออีเมล</label>
+          <input type="text" id="reportSubject" class="input input--full" />
+        </div>
+        <p class="form__help">รายงานจะส่งไปที่อีเมลที่คุณลงทะเบียนตอนสร้าง Access Key ที่ web3forms.com</p>
 
-      <p id="emailJsHint" class="form__help hidden">
-        ตั้งค่า EmailJS ใน <code>js/email-config.js</code> เพื่อส่งตรงจากเว็บโดยไม่เปิดแอปอีเมล
-      </p>
+        <div class="report-preview" id="reportPreview" aria-label="ตัวอย่างรายงาน"></div>
 
-      <div class="report-actions">
-        <button type="button" class="btn btn--ghost" id="btnCopyReport">คัดลอก</button>
-        <button type="button" class="btn btn--primary" id="btnMailtoReport">เปิดแอปอีเมล</button>
-        <button type="button" class="btn btn--accent hidden" id="btnSendEmailJs">ส่งทันที (EmailJS)</button>
+        <p id="reportSendStatus" class="report-status hidden" role="status"></p>
+
+        <div class="report-actions">
+          <button type="button" class="btn btn--ghost" id="btnCopyReport">คัดลอก</button>
+          <button type="button" class="btn btn--primary btn--lg" id="btnSendReport">ส่งเข้าอีเมลของฉัน</button>
+        </div>
       </div>
 
       <div class="dialog__footer">

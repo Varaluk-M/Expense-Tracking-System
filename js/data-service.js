@@ -16,7 +16,11 @@ const DataService = (() => {
 
   function defaultData() {
     return {
-      settings: { initialBalance: 0, monthlyBudget: null },
+      settings: {
+        initialBalance: 0,
+        monthlyBudget: null,
+        web3formsAccessKey: "",
+      },
       transactions: [],
     };
   }

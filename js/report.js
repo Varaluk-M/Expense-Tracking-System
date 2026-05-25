@@ -1,17 +1,19 @@
 /**
- * สร้างรายงานและส่งทางอีเมล
+ * สร้างรายงานและส่งเข้าอีเมลโดยตรง (Web3Forms)
  */
 const ReportService = (() => {
   const PERIOD_LABEL = { day: "รายวัน", month: "รายเดือน", year: "รายปี" };
 
-  function isEmailJsReady() {
-    const c = window.EMAILJS_CONFIG;
-    return (
-      c &&
-      c.publicKey &&
-      !String(c.publicKey).includes("YOUR_") &&
-      typeof emailjs !== "undefined"
-    );
+  function getAccessKey(settings) {
+    const fromSettings = settings?.web3formsAccessKey?.trim();
+    if (fromSettings) return fromSettings;
+    const fromFile = window.EMAIL_CONFIG?.web3formsAccessKey?.trim();
+    if (fromFile && !fromFile.includes("YOUR_")) return fromFile;
+    return "";
+  }
+
+  function isEmailReady(settings) {
+    return !!getAccessKey(settings);
   }
 
   function formatMoneyPlain(n) {
@@ -49,16 +51,8 @@ const ReportService = (() => {
   }
 
   function buildReport(ctx) {
-    const {
-      user,
-      period,
-      periodLabel,
-      filterValues,
-      settings,
-      transactions,
-      totals,
-      allBalance,
-    } = ctx;
+    const { user, period, periodLabel, settings, transactions, totals, allBalance } =
+      ctx;
 
     const lines = [
       "══════════════════════════════════",
@@ -66,7 +60,7 @@ const ReportService = (() => {
       "══════════════════════════════════",
       "",
       `ผู้ส่งรายงาน: ${user.displayName}`,
-      `อีเมล: ${user.email}`,
+      `อีเมลบัญชี: ${user.email}`,
       `ช่วงเวลา: ${PERIOD_LABEL[period]} — ${periodLabel}`,
       `วันที่ออกรายงาน: ${new Date().toLocaleString("th-TH")}`,
       "",
@@ -121,37 +115,32 @@ const ReportService = (() => {
       .replace(/\n/g, "<br>");
   }
 
-  function openMailto(to, subject, body) {
-    const maxLen = 1800;
-    const trimmedBody = body.length > maxLen ? body.slice(0, maxLen) + "\n...(ตัดข้อความ — ดูรายละเอียดเต็มในแอป)" : body;
-    const url =
-      "mailto:" +
-      encodeURIComponent(to || "") +
-      "?subject=" +
-      encodeURIComponent(subject) +
-      "&body=" +
-      encodeURIComponent(trimmedBody);
-    window.location.href = url;
-  }
-
-  async function sendViaEmailJs(to, subject, body, fromName) {
-    const c = window.EMAILJS_CONFIG;
-    emailjs.init(c.publicKey);
-    await emailjs.send(c.serviceId, c.templateId, {
-      to_email: to,
-      subject,
-      message: body,
-      from_name: fromName,
-      reply_to: AuthService.getCurrentUser()?.email || "",
+  async function sendToInbox(accessKey, subject, body, fromEmail, fromName) {
+    const res = await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        access_key: accessKey,
+        subject,
+        email: fromEmail || "noreply@expense-app.local",
+        name: fromName || "Expense App",
+        message: body,
+      }),
     });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "ส่งอีเมลไม่สำเร็จ");
+    }
+    return data;
   }
 
   return {
     buildReport,
     buildHtmlPreview,
-    openMailto,
-    sendViaEmailJs,
-    isEmailJsReady,
+    sendToInbox,
+    getAccessKey,
+    isEmailReady,
     getPeriodLabel,
     PERIOD_LABEL,
   };
@@ -160,28 +149,40 @@ const ReportService = (() => {
 const ReportUI = (() => {
   const $ = (id) => document.getElementById(id);
   let lastReportText = "";
+  let getSettings = () => ({});
 
   function open(ctx) {
     lastReportText = ReportService.buildReport(ctx);
     $("reportPreview").innerHTML = ReportService.buildHtmlPreview(lastReportText);
-    $("reportToEmail").value = ctx.user.email || "";
     $("reportSubject").value = `รายงานรายรับ-รายจ่าย — ${ctx.periodLabel}`;
-    $("emailJsHint").classList.toggle(
-      "hidden",
-      !ReportService.isEmailJsReady()
-    );
-    $("btnSendEmailJs").classList.toggle(
-      "hidden",
-      !ReportService.isEmailJsReady()
-    );
+
+    const ready = ReportService.isEmailReady(getSettings());
+    $("reportSetupHint").classList.toggle("hidden", ready);
+    $("reportReadyBlock").classList.toggle("hidden", !ready);
+    $("btnSendReport").disabled = !ready;
+
     $("reportDialog").showModal();
   }
 
-  function setup(getReportContext) {
+  function setup(getReportContext, getSettingsFn) {
+    getSettings = getSettingsFn;
+
     $("btnReport").addEventListener("click", () => {
       const ctx = getReportContext();
       if (!ctx) return;
+      if (!ReportService.isEmailReady(getSettings())) {
+        const go = confirm(
+          "ยังไม่ได้ตั้งค่าส่งอีเมล\n\nไปที่ ⚙️ ตั้งค่า → ใส่ Web3Forms Access Key (ฟรี)\n\nต้องการเปิดตั้งค่าตอนนี้ไหม?"
+        );
+        if (go) $("settingsDialog").showModal();
+        return;
+      }
       open(ctx);
+    });
+
+    $("btnOpenSettingsFromReport").addEventListener("click", () => {
+      $("reportDialog").close();
+      $("settingsDialog").showModal();
     });
 
     $("btnCloseReport").addEventListener("click", () => $("reportDialog").close());
@@ -195,32 +196,36 @@ const ReportUI = (() => {
       }
     });
 
-    $("btnMailtoReport").addEventListener("click", () => {
-      const to = $("reportToEmail").value.trim();
-      const subject = $("reportSubject").value.trim() || "รายงานรายรับ-รายจ่าย";
-      ReportService.openMailto(to, subject, lastReportText);
-    });
+    $("btnSendReport").addEventListener("click", async () => {
+      const ctx = getReportContext();
+      if (!ctx) return;
 
-    $("btnSendEmailJs").addEventListener("click", async () => {
-      const to = $("reportToEmail").value.trim();
-      if (!to) {
-        alert("กรุณาใส่อีเมลผู้รับ");
+      const key = ReportService.getAccessKey(getSettings());
+      if (!key) {
+        alert("กรุณาตั้งค่า Access Key ใน ⚙️ ตั้งค่า ก่อน");
         return;
       }
-      const btn = $("btnSendEmailJs");
+
+      const btn = $("btnSendReport");
+      const status = $("reportSendStatus");
       btn.disabled = true;
+      status.textContent = "กำลังส่ง...";
+      status.classList.remove("hidden", "report-status--ok", "report-status--err");
+
       try {
-        await ReportService.sendViaEmailJs(
-          to,
-          $("reportSubject").value.trim(),
+        await ReportService.sendToInbox(
+          key,
+          $("reportSubject").value.trim() || "รายงานรายรับ-รายจ่าย",
           lastReportText,
-          AuthService.getCurrentUser()?.displayName || "ผู้ใช้"
+          ctx.user.email,
+          ctx.user.displayName
         );
-        alert("ส่งอีเมลสำเร็จ");
-        $("reportDialog").close();
+        status.textContent = "✓ ส่งเข้าอีเมลแล้ว — ตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์สแปม)";
+        status.classList.add("report-status--ok");
       } catch (e) {
         console.error(e);
-        alert("ส่งไม่สำเร็จ — ตรวจสอบการตั้งค่า EmailJS หรือใช้ปุ่ม 'เปิดแอปอีเมล'");
+        status.textContent = "✗ " + (e.message || "ส่งไม่สำเร็จ — ตรวจสอบ Access Key");
+        status.classList.add("report-status--err");
       } finally {
         btn.disabled = false;
       }

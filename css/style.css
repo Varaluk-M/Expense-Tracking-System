@@ -769,6 +769,47 @@ body {
   min-width: 140px;
 }
 
+.report-setup {
+  padding: 1rem;
+  background: rgba(77, 163, 255, 0.1);
+  border: 1px solid rgba(77, 163, 255, 0.3);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.report-setup p {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.report-status {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.report-status--ok {
+  background: rgba(62, 232, 168, 0.12);
+  color: var(--income);
+  border: 1px solid rgba(62, 232, 168, 0.35);
+}
+
+.report-status--err {
+  background: rgba(255, 123, 123, 0.12);
+  color: #ffb4b4;
+  border: 1px solid rgba(255, 123, 123, 0.35);
+}
+
+.fieldset--email a {
+  color: var(--primary);
+}
+
+.fieldset--email a:hover {
+  text-decoration: underline;
+}
+
 /* Header user */
 .header__actions {
   display: flex;
