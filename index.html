@@ -5,73 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="ระบบบันทึกรายรับ-รายจ่ายครอบครัว พร้อมกราฟและยอดคงเหลือ" />
   <title>บันทึกรายรับ-รายจ่าย | Expense Tracking</title>
+  <script src="js/base-path.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Firebase (ใช้เมื่อตั้งค่า firebase-config.js แล้ว) -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
-  <!-- หน้า Login / สมัครสมาชิก -->
+  <!-- หน้า Login -->
   <div id="authScreen" class="auth-screen">
-    <div class="auth-card">
-      <div class="auth-card__head">
-        <span class="header__icon" aria-hidden="true">💰</span>
-        <h1>บันทึกรายรับ-รายจ่าย</h1>
-        <p>สมัครบัญชีหรือเข้าสู่ระบบ — ข้อมูลแยกของแต่ละคน</p>
+    <div class="auth-bg" aria-hidden="true"></div>
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-logo" aria-hidden="true">💰</div>
+        <div class="auth-card__head">
+          <h1>บันทึกรายรับ-รายจ่าย</h1>
+          <p>สมัครบัญชีหรือเข้าสู่ระบบ — ข้อมูลแยกของแต่ละคน</p>
+        </div>
+
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab auth-tab--active" id="tabLogin" role="tab">เข้าสู่ระบบ</button>
+          <button type="button" class="auth-tab" id="tabRegister" role="tab">สมัครสมาชิก</button>
+        </div>
+
+        <p id="authError" class="auth-error hidden" role="alert"></p>
+
+        <form id="loginForm" class="auth-form">
+          <div class="form__group">
+            <label for="loginEmail">อีเมล</label>
+            <input type="email" id="loginEmail" class="input input--full" required autocomplete="username" placeholder="name@email.com" />
+          </div>
+          <div class="form__group">
+            <label for="loginPassword">รหัสผ่าน</label>
+            <input type="password" id="loginPassword" class="input input--full" required autocomplete="current-password" minlength="6" placeholder="••••••••" />
+          </div>
+          <button type="submit" class="btn btn--primary btn--block btn--lg" id="btnLogin">เข้าสู่ระบบ</button>
+        </form>
+
+        <form id="registerForm" class="auth-form hidden">
+          <div class="form__group">
+            <label for="regDisplayName">ชื่อที่แสดง</label>
+            <input type="text" id="regDisplayName" class="input input--full" maxlength="50" placeholder="เช่น แม่, พ่อ, น้อง" />
+          </div>
+          <div class="form__group">
+            <label for="regEmail">อีเมล</label>
+            <input type="email" id="regEmail" class="input input--full" required autocomplete="email" placeholder="name@email.com" />
+          </div>
+          <div class="form__group">
+            <label for="regPassword">รหัสผ่าน (อย่างน้อย 6 ตัว)</label>
+            <input type="password" id="regPassword" class="input input--full" required minlength="6" autocomplete="new-password" placeholder="••••••••" />
+          </div>
+          <div class="form__group">
+            <label for="regPasswordConfirm">ยืนยันรหัสผ่าน</label>
+            <input type="password" id="regPasswordConfirm" class="input input--full" required minlength="6" autocomplete="new-password" placeholder="••••••••" />
+          </div>
+          <button type="submit" class="btn btn--primary btn--block btn--lg" id="btnRegister">สมัครสมาชิก</button>
+        </form>
+
+        <details class="auth-details">
+          <summary>ข้อมูลเก็บที่ไหน?</summary>
+          <p>โหมดเริ่มต้นเก็บในเบราว์เซอร์แยกตามบัญชี · ต้องการซิงก์หลายเครื่อง → ตั้งค่า Firebase ตาม <code>docs/FIREBASE_SETUP.md</code></p>
+        </details>
       </div>
-
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab auth-tab--active" id="tabLogin">เข้าสู่ระบบ</button>
-        <button type="button" class="auth-tab" id="tabRegister">สมัครสมาชิก</button>
-      </div>
-
-      <p id="authError" class="auth-error hidden" role="alert"></p>
-
-      <form id="loginForm" class="auth-form">
-        <div class="form__group">
-          <label for="loginEmail">อีเมล</label>
-          <input type="email" id="loginEmail" class="input input--full" required autocomplete="username" placeholder="name@email.com" />
-        </div>
-        <div class="form__group">
-          <label for="loginPassword">รหัสผ่าน</label>
-          <input type="password" id="loginPassword" class="input input--full" required autocomplete="current-password" minlength="6" />
-        </div>
-        <button type="submit" class="btn btn--primary btn--block" id="btnLogin">เข้าสู่ระบบ</button>
-      </form>
-
-      <form id="registerForm" class="auth-form hidden">
-        <div class="form__group">
-          <label for="regDisplayName">ชื่อที่แสดง</label>
-          <input type="text" id="regDisplayName" class="input input--full" maxlength="50" placeholder="เช่น แม่, พ่อ, น้อง" />
-        </div>
-        <div class="form__group">
-          <label for="regEmail">อีเมล</label>
-          <input type="email" id="regEmail" class="input input--full" required autocomplete="email" placeholder="name@email.com" />
-        </div>
-        <div class="form__group">
-          <label for="regPassword">รหัสผ่าน (อย่างน้อย 6 ตัว)</label>
-          <input type="password" id="regPassword" class="input input--full" required minlength="6" autocomplete="new-password" />
-        </div>
-        <div class="form__group">
-          <label for="regPasswordConfirm">ยืนยันรหัสผ่าน</label>
-          <input type="password" id="regPasswordConfirm" class="input input--full" required minlength="6" autocomplete="new-password" />
-        </div>
-        <button type="submit" class="btn btn--primary btn--block" id="btnRegister">สมัครสมาชิก</button>
-      </form>
-
-      <p class="auth-note">
-        <strong>โหมดปัจจุบัน:</strong> ข้อมูลเก็บในเบราว์เซอร์ของแต่ละคน (แต่ละบัญชีแยกกัน)<br />
-        ถ้าต้องการใช้มือถือหลายเครื่องแบบข้อมูลเดียวกัน → ตั้งค่า Firebase ตาม <code>docs/FIREBASE_SETUP.md</code>
-      </p>
     </div>
   </div>
 
-  <!-- แอปหลัก (หลัง login) -->
+  <!-- แอปหลัก -->
   <div id="appScreen" class="app hidden">
     <header class="header">
       <div class="header__brand">
@@ -83,6 +87,7 @@
       </div>
       <div class="header__actions">
         <span class="user-badge" id="userDisplay">ผู้ใช้</span>
+        <button type="button" class="btn btn--accent btn--sm" id="btnReport" title="ส่งรายงานทางอีเมล">📧 รายงาน</button>
         <button type="button" class="btn btn--ghost btn--sm" id="btnSettings" title="ตั้งค่า">⚙️</button>
         <button type="button" class="btn btn--ghost btn--sm" id="btnLogout" title="ออกจากระบบ">ออก</button>
       </div>
@@ -160,11 +165,11 @@
         <div class="charts">
           <div class="chart-box">
             <h3>รายจ่ายตามหมวดหมู่</h3>
-            <canvas id="categoryChart" aria-label="กราฟวงกลมรายจ่ายตามหมวดหมู่"></canvas>
+            <canvas id="categoryChart"></canvas>
           </div>
           <div class="chart-box">
             <h3>รายรับ vs รายจ่าย</h3>
-            <canvas id="compareChart" aria-label="กราฟเปรียบเทียบรายรับและรายจ่าย"></canvas>
+            <canvas id="compareChart"></canvas>
           </div>
         </div>
       </section>
@@ -180,7 +185,7 @@
     </main>
 
     <footer class="footer">
-      <p>เข้าสู่ระบบแล้ว — ข้อมูลของบัญชีนี้เท่านั้น · ออกจากระบบก่อนใช้เครื่องร่วมกับคนอื่น</p>
+      <p>ข้อมูลของบัญชีนี้เท่านั้น · กด <strong>รายงาน</strong> เพื่อส่งสรุปทางอีเมล</p>
     </footer>
   </div>
 
@@ -189,13 +194,12 @@
       <h2>ตั้งค่า</h2>
       <div class="form__group">
         <label for="initialBalance">ยอดเงินเริ่มต้น (บาท)</label>
-        <input type="number" id="initialBalance" class="input" step="0.01" value="0" />
-        <p class="form__help">ยอดในบัญช์/กระเป๋า ก่อนเริ่มบันทึกรายการ</p>
+        <input type="number" id="initialBalance" class="input input--full" step="0.01" value="0" />
+        <p class="form__help">ยอดในบัญชี/กระเป๋า ก่อนเริ่มบันทึกรายการ</p>
       </div>
       <div class="form__group">
         <label for="monthlyBudget">งบประมาณรายเดือน (ไม่บังคับ)</label>
-        <input type="number" id="monthlyBudget" class="input" min="0" step="0.01" placeholder="เว้นว่างถ้าไม่ใช้" />
-        <p class="form__help">ใช้เตือนเมื่อรายจ่ายเดือนนี้ใกล้หรือเกินงบ</p>
+        <input type="number" id="monthlyBudget" class="input input--full" min="0" step="0.01" placeholder="เว้นว่างถ้าไม่ใช้" />
       </div>
       <fieldset class="fieldset">
         <legend>สำรอง / กู้คืนข้อมูล</legend>
@@ -214,9 +218,43 @@
     </form>
   </dialog>
 
+  <dialog id="reportDialog" class="dialog dialog--wide">
+    <div class="dialog__inner">
+      <h2>📧 ส่งรายงานทางอีเมล</h2>
+      <p class="dialog__lead">สรุปตามช่วงที่เลือกอยู่ (รายวัน / เดือน / ปี) — แก้อีเมลผู้รับได้</p>
+
+      <div class="form__group">
+        <label for="reportToEmail">ส่งถึงอีเมล</label>
+        <input type="email" id="reportToEmail" class="input input--full" placeholder="recipient@email.com" />
+      </div>
+      <div class="form__group">
+        <label for="reportSubject">หัวข้อ</label>
+        <input type="text" id="reportSubject" class="input input--full" />
+      </div>
+
+      <div class="report-preview" id="reportPreview" aria-label="ตัวอย่างรายงาน"></div>
+
+      <p id="emailJsHint" class="form__help hidden">
+        ตั้งค่า EmailJS ใน <code>js/email-config.js</code> เพื่อส่งตรงจากเว็บโดยไม่เปิดแอปอีเมล
+      </p>
+
+      <div class="report-actions">
+        <button type="button" class="btn btn--ghost" id="btnCopyReport">คัดลอก</button>
+        <button type="button" class="btn btn--primary" id="btnMailtoReport">เปิดแอปอีเมล</button>
+        <button type="button" class="btn btn--accent hidden" id="btnSendEmailJs">ส่งทันที (EmailJS)</button>
+      </div>
+
+      <div class="dialog__footer">
+        <button type="button" class="btn btn--ghost" id="btnCloseReport">ปิด</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="js/firebase-config.js"></script>
+  <script src="js/email-config.js"></script>
   <script src="js/auth-service.js"></script>
   <script src="js/data-service.js"></script>
+  <script src="js/report.js"></script>
   <script src="js/auth-ui.js"></script>
   <script src="js/app.js"></script>
 </body>

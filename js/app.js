@@ -454,6 +454,33 @@ function setupSettings() {
   });
 }
 
+function getFilterValues() {
+  return {
+    date: $("filterDate").value,
+    month: $("filterMonth").value,
+    year: $("filterYear").value,
+  };
+}
+
+function getReportContext() {
+  const user = AuthService.getCurrentUser();
+  if (!user) return null;
+  const filtered = getFilteredTransactions();
+  const totals = getPeriodTotals(filtered);
+  const all = getAllTotals();
+  const fv = getFilterValues();
+  return {
+    user,
+    period: state.period,
+    periodLabel: ReportService.getPeriodLabel(state.period, fv),
+    filterValues: fv,
+    settings: state.settings,
+    transactions: filtered,
+    totals,
+    allBalance: all.balance,
+  };
+}
+
 function setupClearFiltered() {
   $("btnClearFiltered").addEventListener("click", async () => {
     const filtered = getFilteredTransactions();
@@ -475,6 +502,7 @@ function setupAppHandlers() {
   setupForm();
   setupSettings();
   setupClearFiltered();
+  ReportUI.setup(getReportContext);
 }
 
 async function onUserReady(user) {
